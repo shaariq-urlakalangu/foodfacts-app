@@ -1,41 +1,43 @@
-import { useState } from 'react'
-import SearchBar from './components/SearchBar'
-import FoodList from './components/FoodList'
+import { useReducer } from 'react'
+import { Routes, Route } from 'react-router-dom'
+import NavBar from './components/NavBar'
+import HomePage from './pages/HomePage'
+import DetailPage from './pages/DetailPage'
+import SavedPage from './pages/SavedPage'
 
-function App() {
-  const [results, setResults] = useState([])
-  const [loading, setLoading] = useState(false)
+function savedReducer(state, action) {
+  switch (action.type) {
+    case 'ADD':
+      // Check if product already exists to avoid duplicates
+      if (state.some(p => p.code === action.product.code)) {
+        return state
+      }
+      return [...state, action.product]
 
-  const handleSearch = async (query) => {
-  setLoading(true);
+    case 'REMOVE':
+      return state.filter(p => p.code !== action.code)
 
-  try {
-    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=10`
-    const response = await fetch(url)
-    const data = await response.json()
-
-    // data.products is the array you need
-    // set it into your results state
-    // but filter out products with no name first
-    const filteredData=data.products.filter((product)=>{product.product_name && product.product_name.trim()!==""});
-    setResults(...filteredData);
-
-  } catch (error) {
-    console.error('Something went wrong:', error)
-  } finally {
-    setLoading(false)
+    default:
+      return state
   }
 }
 
+function App() {
+  const [saved, dispatch] = useReducer(savedReducer, [])
+
   return (
     <div>
-      <h1>🥗 FoodFacts</h1>
-      <SearchBar onSearch={handleSearch} />
-      {loading && <p>Loading...</p>}
-      {!loading && results.length === 0 && (
-        <p>Search for a food above to see its nutrition info.</p>
-        )}
-      <FoodList products={results} />
+      <NavBar savedCount={saved.length} />
+      <main>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route
+            path="/product/:barcode"
+            element={<DetailPage saved={saved} dispatch={dispatch} />}
+          />
+          <Route path="/saved" element={<SavedPage saved={saved} dispatch={dispatch} />} />
+        </Routes>
+      </main>
     </div>
   )
 }
