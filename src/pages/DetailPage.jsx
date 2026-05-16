@@ -1,127 +1,96 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import axios from 'axios'
-import ErrorMessage from '../components/ErrorMessage'
+import { useSelector, useDispatch } from 'react-redux'
+import { addItem, removeItem } from '../store/savedSlice'
+import { useNavigate, useLocation } from 'react-router-dom'
+import Container from '@mui/material/Container'
+import Box from '@mui/material/Box'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
+import Paper from '@mui/material/Paper'
+import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd'
+import BookmarkRemoveIcon from '@mui/icons-material/BookmarkRemove'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import NutritionRow from '../components/NutritionRow'
 
-function DetailPage({ saved, dispatch }) {
-  const { barcode } = useParams()
-  const navigate = useNavigate()
+function DetailPage() {
+  const dispatch = useDispatch()
+  const savedItems = useSelector(state => state.saved.items)
   const location = useLocation()
+  const navigate = useNavigate()
+  const product = location.state?.product
 
-  const [product, setProduct] = useState(location.state?.product || null)
-  const [loading, setLoading] = useState(!location.state?.product)
-  const [error, setError] = useState(null)
+  if (!product) {
+    return (
+      <Container sx={{ py: 4 }}>
+        <Typography>Product not found.</Typography>
+        <Button onClick={() => navigate('/')}>← Back to Search</Button>
+      </Container>
+    )
+  }
 
-  useEffect(() => {
-    // If we don't have product data from navigation state,
-    // try to fetch it from the API
-    if (!product) {
-      let cancelled = false
-
-      const fetchProduct = async () => {
-        try {
-          const response = await axios.get(
-            `/proxy/cgi/search.pl?action=process&code=${barcode}&json=1`
-          )
-          if (!cancelled && response.data.products && response.data.products.length > 0) {
-            setProduct(response.data.products[0])
-            setLoading(false)
-          } else {
-            if (!cancelled) {
-              setError('Product not found.')
-              setLoading(false)
-            }
-          }
-        } catch (err) {
-          if (!cancelled) {
-            setError('Could not load product details.')
-            setLoading(false)
-          }
-        }
-      }
-
-      fetchProduct()
-
-      return () => {
-        cancelled = true
-      }
-    }
-  }, [])
-
-  const isSaved = saved.some(p => p.code === barcode)
+  const { product_name, brands, image_url, nutriments } = product
+  const isSaved = savedItems.some(p => p.id === product.id)
 
   const handleSaveToggle = () => {
     if (isSaved) {
-      dispatch({ type: 'REMOVE', code: barcode })
+      dispatch(removeItem(product.id))
     } else {
-      dispatch({ type: 'ADD', product: product })
+      dispatch(addItem(product))
     }
   }
 
-  if (loading) return <div className="page"><p>Loading product details...</p></div>
-  if (error) return <div className="page"><ErrorMessage message={error} /></div>
-  if (!product) return <div className="page"><p>Product not found.</p></div>
-
   return (
-    <div className="page detail-page">
-      <button onClick={() => navigate(-1)} className="back-button">← Back</button>
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Button
+        startIcon={<ArrowBackIcon />}
+        onClick={() => navigate(-1)}
+        sx={{ mb: 3 }}
+      >
+        Back
+      </Button>
 
-      <div className="detail-header">
-        {product.image_small_url && (
-          <img src={product.image_small_url} alt={product.product_name} className="detail-image" />
-        )}
-        <div className="detail-info">
-          <h2>{product.product_name || 'Unknown Product'}</h2>
-          {product.brands && <p className="brand">{product.brands}</p>}
-        </div>
-      </div>
+      <Paper sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 3 }}>
+          {image_url && (
+            <Box
+              component="img"
+              src={image_url}
+              alt={product_name}
+              sx={{ width: 160, height: 160, objectFit: 'contain' }}
+            />
+          )}
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h5" gutterBottom>
+              {product_name || 'Unknown Product'}
+            </Typography>
+            <Typography color="text.secondary" gutterBottom>
+              {brands || 'Unknown Brand'}
+            </Typography>
+            <Button
+              variant={isSaved ? 'outlined' : 'contained'}
+              color={isSaved ? 'error' : 'primary'}
+              startIcon={isSaved ? <BookmarkRemoveIcon /> : <BookmarkAddIcon />}
+              onClick={handleSaveToggle}
+              sx={{ mt: 1 }}
+            >
+              {isSaved ? 'Remove from Saved' : 'Save to My List'}
+            </Button>
+          </Box>
+        </Box>
 
-      <div className="nutrition-table">
-        <h3>Nutrition per 100g</h3>
-        <div className="nutrients-grid">
-          {product.nutriments?.['energy-kcal_100g'] && (
-            <div className="nutrient-item">
-              <span className="nutrient-label">Calories</span>
-              <span className="nutrient-value">{product.nutriments['energy-kcal_100g']} kcal</span>
-            </div>
-          )}
-          {product.nutriments?.['proteins_100g'] && (
-            <div className="nutrient-item">
-              <span className="nutrient-label">Protein</span>
-              <span className="nutrient-value">{product.nutriments['proteins_100g']}g</span>
-            </div>
-          )}
-          {product.nutriments?.['carbohydrates_100g'] && (
-            <div className="nutrient-item">
-              <span className="nutrient-label">Carbs</span>
-              <span className="nutrient-value">{product.nutriments['carbohydrates_100g']}g</span>
-            </div>
-          )}
-          {product.nutriments?.['fat_100g'] && (
-            <div className="nutrient-item">
-              <span className="nutrient-label">Fat</span>
-              <span className="nutrient-value">{product.nutriments['fat_100g']}g</span>
-            </div>
-          )}
-          {product.nutriments?.['fiber_100g'] && (
-            <div className="nutrient-item">
-              <span className="nutrient-label">Fiber</span>
-              <span className="nutrient-value">{product.nutriments['fiber_100g']}g</span>
-            </div>
-          )}
-          {product.nutriments?.['sugars_100g'] && (
-            <div className="nutrient-item">
-              <span className="nutrient-label">Sugars</span>
-              <span className="nutrient-value">{product.nutriments['sugars_100g']}g</span>
-            </div>
-          )}
-        </div>
-      </div>
+        <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+          Nutrition per 100g
+        </Typography>
 
-      <button onClick={handleSaveToggle} className="save-button">
-        {isSaved ? '★ Remove from Saved' : '☆ Save to My List'}
-      </button>
-    </div>
+        <NutritionRow label="Calories" value={nutriments?.['energy-kcal_100g']} unit=" kcal" />
+        <NutritionRow label="Protein" value={nutriments?.proteins_100g} unit="g" />
+        <NutritionRow label="Carbohydrates" value={nutriments?.carbohydrates_100g} unit="g" />
+        <NutritionRow label="Sugars" value={nutriments?.sugars_100g} unit="g" />
+        <NutritionRow label="Fat" value={nutriments?.fat_100g} unit="g" />
+        <NutritionRow label="Saturated Fat" value={nutriments?.['saturated-fat_100g']} unit="g" />
+        <NutritionRow label="Fibre" value={nutriments?.fiber_100g} unit="g" />
+        <NutritionRow label="Salt" value={nutriments?.salt_100g} unit="g" />
+      </Paper>
+    </Container>
   )
 }
 
