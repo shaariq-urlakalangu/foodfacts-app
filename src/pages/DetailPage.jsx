@@ -1,42 +1,52 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import axios from 'axios'
 import ErrorMessage from '../components/ErrorMessage'
 
 function DetailPage({ saved, dispatch }) {
   const { barcode } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
 
-  const [product, setProduct] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [product, setProduct] = useState(location.state?.product || null)
+  const [loading, setLoading] = useState(!location.state?.product)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    let cancelled = false
+    // If we don't have product data from navigation state,
+    // try to fetch it from the API
+    if (!product) {
+      let cancelled = false
 
-    const fetchProduct = async () => {
-      try {
-        const response = await axios.get(
-          `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`
-        )
-        if (!cancelled) {
-          setProduct(response.data.product)
-          setLoading(false)
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError('Could not load product details.')
-          setLoading(false)
+      const fetchProduct = async () => {
+        try {
+          const response = await axios.get(
+            `/proxy/cgi/search.pl?action=process&code=${barcode}&json=1`
+          )
+          if (!cancelled && response.data.products && response.data.products.length > 0) {
+            setProduct(response.data.products[0])
+            setLoading(false)
+          } else {
+            if (!cancelled) {
+              setError('Product not found.')
+              setLoading(false)
+            }
+          }
+        } catch (err) {
+          if (!cancelled) {
+            setError('Could not load product details.')
+            setLoading(false)
+          }
         }
       }
-    }
 
-    fetchProduct()
+      fetchProduct()
 
-    return () => {
-      cancelled = true
+      return () => {
+        cancelled = true
+      }
     }
-  }, [barcode])
+  }, [])
 
   const isSaved = saved.some(p => p.code === barcode)
 

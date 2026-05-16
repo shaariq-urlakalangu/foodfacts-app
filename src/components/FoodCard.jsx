@@ -5,7 +5,7 @@ function FoodCard({ product }) {
   const { product_name, brands, nutriments, image_small_url, code } = product
 
   const handleClick = () => {
-    navigate(`/product/${code}`)
+    navigate(`/product/${code}`, { state: { product } })
   }
 
   return (

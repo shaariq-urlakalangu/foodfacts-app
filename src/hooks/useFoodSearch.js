@@ -11,7 +11,7 @@ function useFoodSearch() {
     setError(null)
 
     try {
-      const url = `https://world.openfoodfacts.org/cgi/search.pl`
+      const url = `/proxy/cgi/search.pl`
       const response = await axios.get(url, {
         params: {
           search_terms: query,
