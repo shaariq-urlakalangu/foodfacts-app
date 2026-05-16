@@ -1,8 +1,15 @@
+import { useNavigate } from 'react-router-dom'
+
 function FoodCard({ product }) {
-  const { product_name, brands, nutriments, image_small_url } = product
+  const navigate = useNavigate()
+  const { product_name, brands, nutriments, image_small_url, code } = product
+
+  const handleClick = () => {
+    navigate(`/product/${code}`, { state: { product } })
+  }
 
   return (
-    <div className="food-card">
+    <div className="food-card" onClick={handleClick} style={{ cursor: 'pointer' }}>
       {image_small_url && <img src={image_small_url} alt={product_name} />}
       <h2>{product_name ? product_name : "Unknown Product"}</h2>
       {brands && <p className="brand">{brands}</p>}
